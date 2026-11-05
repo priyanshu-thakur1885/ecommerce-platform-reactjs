@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getProductById } from "../features/products/services/productService";
+import {
+    getProductById,
+    getReviewsByProductId,
+} from "../features/products/services/productService";
 import useCartStore from "../features/cart/hooks/useCartStore";
 import useWishlistStore from "../features/wishlist/hooks/useWishlistStore";
 
 export default function ProductDetailsPage() {
     const { id } = useParams();
     const [product, setProduct] = useState(null);
+    const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [countdown, setCountdown] = useState(null);
     const addToCart = useCartStore((s) => s.addToCart);
@@ -17,7 +21,13 @@ export default function ProductDetailsPage() {
         async function load() {
             setLoading(true);
             const p = await getProductById(id);
+            const productReviews = await getReviewsByProductId(id);
             setProduct(p);
+            setReviews(
+                [...productReviews].sort(
+                    (a, b) => new Date(b.date) - new Date(a.date)
+                )
+            );
             setLoading(false);
         }
         load();
@@ -103,6 +113,11 @@ export default function ProductDetailsPage() {
     }
 
     const time = formatCountdown(countdown);
+    const averageRating =
+        reviews.length > 0
+            ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+            : 0;
+    const displayedReviews = reviews.slice(0, 5);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -233,16 +248,64 @@ export default function ProductDetailsPage() {
                         </button>
                     </div>
 
-                    {/* Reviews Placeholder — Student task to implement */}
                     <div className="mt-10 border-t border-gray-100 pt-8">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">
-                            Customer Reviews
-                        </h3>
-                        <div className="bg-gray-50 rounded-xl p-6 text-center">
-                            <p className="text-gray-400 text-sm">
-                                Reviews will be displayed here.
-                            </p>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">
+                                Customer Reviews
+                            </h3>
+                            {reviews.length > 0 && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <span className="flex items-center gap-1">
+                                        {renderStars(averageRating)}
+                                    </span>
+                                    <span>{averageRating.toFixed(1)} / 5</span>
+                                    <span className="text-gray-400">•</span>
+                                    <span>{reviews.length} reviews</span>
+                                </div>
+                            )}
                         </div>
+
+                        {reviews.length === 0 ? (
+                            <div className="bg-gray-50 rounded-xl p-6 text-center">
+                                <p className="text-gray-400 text-sm">No reviews yet</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {displayedReviews.map((review) => (
+                                    <div
+                                        key={review.id}
+                                        className="bg-gray-50 rounded-xl p-4 border border-gray-100"
+                                    >
+                                        <div className="flex items-center justify-between gap-4 mb-2">
+                                            <div>
+                                                <p className="font-semibold text-gray-900">
+                                                    {review.user}
+                                                </p>
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    {renderStars(review.rating)}
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(review.date).toLocaleDateString(undefined, {
+                                                    year: "numeric",
+                                                    month: "short",
+                                                    day: "numeric",
+                                                })}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 leading-relaxed">
+                                            {review.comment}
+                                        </p>
+                                    </div>
+                                ))}
+
+                                {reviews.length > 5 && (
+                                    <p className="text-sm text-primary-600 font-medium">
+                                        Showing 5 of {reviews.length} reviews
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
