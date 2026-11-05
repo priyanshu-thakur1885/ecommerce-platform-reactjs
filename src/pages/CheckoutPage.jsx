@@ -2,10 +2,39 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import useCartStore from "../features/cart/hooks/useCartStore";
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^\+?[\d\s()-]+$/;
+
+const validateForm = (values) => {
+    const nextErrors = {};
+
+    Object.entries(values).forEach(([key, value]) => {
+        const trimmed = value.trim();
+
+        if (!trimmed) {
+            nextErrors[key] = "This field is required";
+            return;
+        }
+
+        if (key === "email" && !emailRegex.test(trimmed)) {
+            nextErrors[key] = "Please enter a valid email address";
+        }
+
+        if (key === "phone" && !phoneRegex.test(trimmed)) {
+            nextErrors[key] = "Please enter a valid phone number";
+        }
+    });
+
+    return nextErrors;
+};
+
 export default function CheckoutPage() {
     const items = useCartStore((s) => s.items);
     const clearCart = useCartStore((s) => s.clearCart);
     const [orderPlaced, setOrderPlaced] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [touched, setTouched] = useState({});
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState({
         firstName: "",
@@ -23,13 +52,46 @@ export default function CheckoutPage() {
         0
     );
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+    const fieldHasError = (name) => {
+        return (submitted || touched[name]) && errors[name];
     };
 
-    // No validation implemented — student task
+    const getInputClassName = (name) => {
+        const base =
+            "w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent";
+        return fieldHasError(name)
+            ? `${base} border-red-500 text-red-900 focus:ring-red-200`
+            : `${base} border-gray-200`;
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        const nextForm = { ...form, [name]: value };
+        setForm(nextForm);
+
+        const nextErrors = validateForm(nextForm);
+        setErrors((prev) => ({
+            ...prev,
+            [name]: nextErrors[name],
+        }));
+    };
+
+    const handleBlur = (e) => {
+        const { name } = e.target;
+        setTouched((prev) => ({ ...prev, [name]: true }));
+
+        const nextErrors = validateForm(form);
+        setErrors(nextErrors);
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        setSubmitted(true);
+        const nextErrors = validateForm(form);
+        setErrors(nextErrors);
+
+        if (Object.keys(nextErrors).length > 0) return;
+
         clearCart();
         setOrderPlaced(true);
     };
@@ -115,9 +177,13 @@ export default function CheckoutPage() {
                                         name="firstName"
                                         value={form.firstName}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("firstName")}
                                         placeholder="John"
                                     />
+                                    {fieldHasError("firstName") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.firstName}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -128,9 +194,13 @@ export default function CheckoutPage() {
                                         name="lastName"
                                         value={form.lastName}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("lastName")}
                                         placeholder="Doe"
                                     />
+                                    {fieldHasError("lastName") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.lastName}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -141,9 +211,13 @@ export default function CheckoutPage() {
                                         name="email"
                                         value={form.email}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("email")}
                                         placeholder="john@example.com"
                                     />
+                                    {fieldHasError("email") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -154,9 +228,13 @@ export default function CheckoutPage() {
                                         name="phone"
                                         value={form.phone}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("phone")}
                                         placeholder="+1 (555) 000-0000"
                                     />
+                                    {fieldHasError("phone") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.phone}</p>
+                                    )}
                                 </div>
                                 <div className="sm:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -167,9 +245,13 @@ export default function CheckoutPage() {
                                         name="address"
                                         value={form.address}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("address")}
                                         placeholder="123 Main Street"
                                     />
+                                    {fieldHasError("address") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.address}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -180,9 +262,13 @@ export default function CheckoutPage() {
                                         name="city"
                                         value={form.city}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("city")}
                                         placeholder="New York"
                                     />
+                                    {fieldHasError("city") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.city}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -193,9 +279,13 @@ export default function CheckoutPage() {
                                         name="zipCode"
                                         value={form.zipCode}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onBlur={handleBlur}
+                                        className={getInputClassName("zipCode")}
                                         placeholder="10001"
                                     />
+                                    {fieldHasError("zipCode") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.zipCode}</p>
+                                    )}
                                 </div>
                                 <div className="sm:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -205,7 +295,8 @@ export default function CheckoutPage() {
                                         name="country"
                                         value={form.country}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                                        onBlur={handleBlur}
+                                        className={`${getInputClassName("country")} bg-white`}
                                     >
                                         <option value="">Select country</option>
                                         <option value="US">United States</option>
@@ -215,6 +306,9 @@ export default function CheckoutPage() {
                                         <option value="FR">France</option>
                                         <option value="AU">Australia</option>
                                     </select>
+                                    {fieldHasError("country") && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.country}</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
