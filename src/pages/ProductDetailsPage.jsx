@@ -10,7 +10,7 @@ export default function ProductDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [countdown, setCountdown] = useState(null);
     const addToCart = useCartStore((s) => s.addToCart);
-    const addToWishlist = useWishlistStore((s) => s.addToWishlist);
+    const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
     const isInWishlist = useWishlistStore((s) => s.isInWishlist(Number(id)));
 
     useEffect(() => {
@@ -217,7 +217,7 @@ export default function ProductDetailsPage() {
                             Add to Cart
                         </button>
                         <button
-                            onClick={() => addToWishlist(product)}
+                            onClick={() => toggleWishlist(product)}
                             className={`px-4 py-3.5 rounded-xl border-2 transition-all ${isInWishlist
                                 ? "border-accent-500 bg-accent-50 text-accent-500"
                                 : "border-gray-200 text-gray-400 hover:border-accent-300 hover:text-accent-500"
