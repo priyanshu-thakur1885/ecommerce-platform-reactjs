@@ -1,13 +1,21 @@
 import { useState, useEffect } from "react";
-import { getProducts, getCategories } from "../features/products/services/productService";
+import {
+    filterProducts,
+    getCategories,
+} from "../features/products/services/productService";
 import ProductCard from "../features/products/components/ProductCard";
 
 export default function ProductsPage() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [totalProducts, setTotalProducts] = useState(0);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        totalPages: 0,
+        limit: 8,
+    });
 
-    // Basic state — not wired to filterProducts yet (student task)
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
     const [sortBy, setSortBy] = useState("title");
@@ -16,26 +24,60 @@ export default function ProductsPage() {
     const productsPerPage = 8;
 
     useEffect(() => {
-        async function load() {
-            setLoading(true);
-            // Currently just loads all products — students should use filterProducts()
-            const allProducts = await getProducts();
-            setProducts(allProducts);
+        async function loadCategories() {
             const cats = await getCategories();
             setCategories(cats);
-            // Simulate a short loading time so the spinner is visible
-            setTimeout(() => setLoading(false), 600);
         }
-        load();
+
+        loadCategories();
     }, []);
 
-    // Basic client-side pagination (not using filterProducts — student task)
-    const startIndex = (currentPage - 1) * productsPerPage;
-    const paginatedProducts = products.slice(
-        startIndex,
-        startIndex + productsPerPage
-    );
-    const totalPages = Math.ceil(products.length / productsPerPage);
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, selectedCategory, sortBy, sortOrder]);
+
+    useEffect(() => {
+        let active = true;
+
+        async function loadProducts() {
+            setLoading(true);
+
+            try {
+                const result = await filterProducts({
+                    search,
+                    category: selectedCategory,
+                    sortBy,
+                    sortOrder,
+                    page: currentPage,
+                    limit: productsPerPage,
+                });
+
+                if (!active) return;
+
+                setProducts(result.data);
+                setTotalProducts(result.total);
+                setPagination({
+                    page: result.page,
+                    totalPages: result.totalPages,
+                    limit: result.limit,
+                });
+                setCurrentPage(result.page);
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadProducts();
+
+        return () => {
+            active = false;
+        };
+    }, [search, selectedCategory, sortBy, sortOrder, currentPage, productsPerPage]);
+
+    const totalPages = pagination.totalPages;
+    const paginatedProducts = products;
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -43,7 +85,7 @@ export default function ProductsPage() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">All Products</h1>
                 <p className="text-gray-500">
-                    Browse our collection of {products.length} premium products
+                    Browse our collection of {totalProducts} premium products
                 </p>
             </div>
 
