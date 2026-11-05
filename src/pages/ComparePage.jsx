@@ -1,10 +1,38 @@
 import { useState, useEffect } from "react";
 import { getProducts } from "../features/products/services/productService";
+import useCompareStore from "../features/compare/hooks/useCompareStore";
+
+const comparisonFields = [
+    { label: "Price", key: "price", format: (v) => `$${v?.toFixed(2) || "—"}` },
+    { label: "Category", key: "category", format: (v) => v || "—" },
+    { label: "Rating", key: "rating", format: (v) => (v ? `${v} / 5` : "—") },
+    { label: "Stock", key: "stock", format: (v) => (v != null ? `${v} units` : "—") },
+];
+
+const getWinner = (key, valueA, valueB) => {
+    if (valueA == null || valueB == null) return null;
+
+    if (key === "price") {
+        if (valueA < valueB) return "A";
+        if (valueB < valueA) return "B";
+        return "tie";
+    }
+
+    if (key === "rating" || key === "stock") {
+        if (valueA > valueB) return "A";
+        if (valueB > valueA) return "B";
+        return "tie";
+    }
+
+    return null;
+};
 
 export default function ComparePage() {
     const [products, setProducts] = useState([]);
-    const [selectedProductA, setSelectedProductA] = useState("");
-    const [selectedProductB, setSelectedProductB] = useState("");
+    const compareItems = useCompareStore((s) => s.items);
+    const clearProducts = useCompareStore((s) => s.clearProducts);
+    const [selectedProductA, setSelectedProductA] = useState(compareItems[0]?.id?.toString() || "");
+    const [selectedProductB, setSelectedProductB] = useState(compareItems[1]?.id?.toString() || "");
 
     useEffect(() => {
         async function load() {
@@ -14,16 +42,32 @@ export default function ComparePage() {
         load();
     }, []);
 
-    // Comparison logic not implemented — student task
+    useEffect(() => {
+        setSelectedProductA(compareItems[0]?.id?.toString() || "");
+        setSelectedProductB(compareItems[1]?.id?.toString() || "");
+    }, [compareItems]);
+
     const productA = products.find((p) => p.id === Number(selectedProductA));
     const productB = products.find((p) => p.id === Number(selectedProductB));
 
-    const comparisonFields = [
-        { label: "Price", key: "price", format: (v) => `$${v?.toFixed(2) || "—"}` },
-        { label: "Category", key: "category", format: (v) => v || "—" },
-        { label: "Rating", key: "rating", format: (v) => (v ? `${v} / 5` : "—") },
-        { label: "Stock", key: "stock", format: (v) => (v != null ? `${v} units` : "—") },
-    ];
+    const handleAChange = (value) => {
+        if (value && value === selectedProductB) {
+            setSelectedProductB("");
+        }
+
+        setSelectedProductA(value);
+    };
+
+    const handleBChange = (value) => {
+        if (value && value === selectedProductA) {
+            setSelectedProductA("");
+        }
+
+        setSelectedProductB(value);
+    };
+
+    const filterOptionsA = products.filter((p) => p.id !== Number(selectedProductB));
+    const filterOptionsB = products.filter((p) => p.id !== Number(selectedProductA));
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -34,7 +78,19 @@ export default function ComparePage() {
                 </p>
             </div>
 
-            {/* Product Selectors */}
+            <div className="flex justify-end mb-6">
+                <button
+                    onClick={() => {
+                        setSelectedProductA("");
+                        setSelectedProductB("");
+                        clearProducts();
+                    }}
+                    className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:border-red-200 hover:text-red-500 transition-colors"
+                >
+                    Clear Selection
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -42,11 +98,11 @@ export default function ComparePage() {
                     </label>
                     <select
                         value={selectedProductA}
-                        onChange={(e) => setSelectedProductA(e.target.value)}
+                        onChange={(e) => handleAChange(e.target.value)}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                     >
                         <option value="">Select a product...</option>
-                        {products.map((p) => (
+                        {filterOptionsA.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.title}
                             </option>
@@ -59,11 +115,11 @@ export default function ComparePage() {
                     </label>
                     <select
                         value={selectedProductB}
-                        onChange={(e) => setSelectedProductB(e.target.value)}
+                        onChange={(e) => handleBChange(e.target.value)}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                     >
                         <option value="">Select a product...</option>
-                        {products.map((p) => (
+                        {filterOptionsB.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.title}
                             </option>
@@ -72,10 +128,8 @@ export default function ComparePage() {
                 </div>
             </div>
 
-            {/* Comparison Table */}
             {productA || productB ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    {/* Product Headers */}
                     <div className="grid grid-cols-3 border-b border-gray-100">
                         <div className="p-4 bg-gray-50 font-medium text-sm text-gray-500">
                             Feature
@@ -93,9 +147,7 @@ export default function ComparePage() {
                                     </p>
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-400 py-8">
-                                    Select Product A
-                                </p>
+                                <p className="text-sm text-gray-400 py-8">Select Product A</p>
                             )}
                         </div>
                         <div className="p-4 text-center border-l border-gray-100">
@@ -111,32 +163,44 @@ export default function ComparePage() {
                                     </p>
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-400 py-8">
-                                    Select Product B
-                                </p>
+                                <p className="text-sm text-gray-400 py-8">Select Product B</p>
                             )}
                         </div>
                     </div>
 
-                    {/* Comparison Rows */}
-                    {comparisonFields.map((field) => (
-                        <div
-                            key={field.key}
-                            className="grid grid-cols-3 border-b border-gray-50 last:border-0"
-                        >
-                            <div className="p-4 bg-gray-50 text-sm font-medium text-gray-600">
-                                {field.label}
-                            </div>
-                            <div className="p-4 text-center text-sm text-gray-800 border-l border-gray-100">
-                                {productA ? field.format(productA[field.key]) : "—"}
-                            </div>
-                            <div className="p-4 text-center text-sm text-gray-800 border-l border-gray-100">
-                                {productB ? field.format(productB[field.key]) : "—"}
-                            </div>
-                        </div>
-                    ))}
+                    {comparisonFields.map((field) => {
+                        const valueA = productA?.[field.key];
+                        const valueB = productB?.[field.key];
+                        const winner = getWinner(field.key, valueA, valueB);
 
-                    {/* Description */}
+                        return (
+                            <div
+                                key={field.key}
+                                className="grid grid-cols-3 border-b border-gray-50 last:border-0"
+                            >
+                                <div className="p-4 bg-gray-50 text-sm font-medium text-gray-600">
+                                    {field.label}
+                                </div>
+                                <div
+                                    className={`p-4 text-center text-sm border-l border-gray-100 ${winner === "A"
+                                        ? "bg-emerald-50 text-emerald-700 font-semibold"
+                                        : "text-gray-800"
+                                        }`}
+                                >
+                                    {productA ? field.format(valueA) : "—"}
+                                </div>
+                                <div
+                                    className={`p-4 text-center text-sm border-l border-gray-100 ${winner === "B"
+                                        ? "bg-emerald-50 text-emerald-700 font-semibold"
+                                        : "text-gray-800"
+                                        }`}
+                                >
+                                    {productB ? field.format(valueB) : "—"}
+                                </div>
+                            </div>
+                        );
+                    })}
+
                     <div className="grid grid-cols-3 border-t border-gray-100">
                         <div className="p-4 bg-gray-50 text-sm font-medium text-gray-600">
                             Description

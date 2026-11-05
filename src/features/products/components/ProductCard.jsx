@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
 import useCartStore from "../../cart/hooks/useCartStore";
 import useWishlistStore from "../../wishlist/hooks/useWishlistStore";
+import useCompareStore from "../../compare/hooks/useCompareStore";
 
 export default function ProductCard({ product }) {
     const addToCart = useCartStore((s) => s.addToCart);
     const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
     const isInWishlist = useWishlistStore((s) => s.isInWishlist(product.id));
+    const toggleCompare = useCompareStore((s) => s.toggleProduct);
+    const isInCompare = useCompareStore((s) => s.hasProduct(product.id));
 
     const renderStars = (rating) => {
         const stars = [];
@@ -99,16 +102,31 @@ export default function ProductCard({ product }) {
                     <span className="text-xs text-gray-500 ml-1">({product.rating})</span>
                 </div>
 
-                <div className="mt-auto flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">
-                        ${product.price.toFixed(2)}
-                    </span>
+                <div className="mt-auto">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-lg font-bold text-gray-900">
+                            ${product.price.toFixed(2)}
+                        </span>
+                        <button
+                            onClick={() => addToCart(product)}
+                            disabled={product.stock === 0}
+                            className="px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Add to Cart
+                        </button>
+                    </div>
+
                     <button
-                        onClick={() => addToCart(product)}
-                        disabled={product.stock === 0}
-                        className="px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            toggleCompare(product);
+                        }}
+                        className={`w-full px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${isInCompare
+                            ? "border-primary-600 bg-primary-50 text-primary-700"
+                            : "border-gray-200 text-gray-600 hover:border-primary-200 hover:text-primary-600"
+                            }`}
                     >
-                        Add to Cart
+                        {isInCompare ? "In Compare List" : "Add to Compare"}
                     </button>
                 </div>
             </div>
