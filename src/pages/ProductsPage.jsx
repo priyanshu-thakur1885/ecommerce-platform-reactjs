@@ -1,11 +1,25 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     filterProducts,
     getCategories,
 } from "../features/products/services/productService";
 import ProductCard from "../features/products/components/ProductCard";
 
+const validSortValues = ["title", "price", "rating"];
+const validOrderValues = ["asc", "desc"];
+
+function normalizeSortBy(value) {
+    return validSortValues.includes(value) ? value : "title";
+}
+
+function normalizeSortOrder(value) {
+    return validOrderValues.includes(value) ? value : "asc";
+}
+
 export default function ProductsPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,25 +30,50 @@ export default function ProductsPage() {
         limit: 8,
     });
 
-    const [search, setSearch] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [sortBy, setSortBy] = useState("title");
-    const [sortOrder, setSortOrder] = useState("asc");
-    const [currentPage, setCurrentPage] = useState(1);
+    const [search, setSearch] = useState(searchParams.get("search") || "");
+    const [selectedCategory, setSelectedCategory] = useState(
+        searchParams.get("category") || ""
+    );
+    const [sortBy, setSortBy] = useState(
+        normalizeSortBy(searchParams.get("sortBy"))
+    );
+    const [sortOrder, setSortOrder] = useState(
+        normalizeSortOrder(searchParams.get("sortOrder"))
+    );
+    const [currentPage, setCurrentPage] = useState(
+        Math.max(1, Number(searchParams.get("page")) || 1)
+    );
     const productsPerPage = 8;
 
     useEffect(() => {
         async function loadCategories() {
             const cats = await getCategories();
             setCategories(cats);
+
+            const categoryFromUrl = searchParams.get("category") || "";
+            if (categoryFromUrl && !cats.includes(categoryFromUrl)) {
+                setSelectedCategory("");
+            }
         }
 
         loadCategories();
-    }, []);
+    }, [searchParams]);
 
     useEffect(() => {
         setCurrentPage(1);
     }, [search, selectedCategory, sortBy, sortOrder]);
+
+    useEffect(() => {
+        const params = new URLSearchParams();
+
+        if (search) params.set("search", search);
+        if (selectedCategory) params.set("category", selectedCategory);
+        if (sortBy !== "title") params.set("sortBy", sortBy);
+        if (sortOrder !== "asc") params.set("sortOrder", sortOrder);
+        if (currentPage > 1) params.set("page", String(currentPage));
+
+        setSearchParams(params, { replace: true });
+    }, [search, selectedCategory, sortBy, sortOrder, currentPage, setSearchParams]);
 
     useEffect(() => {
         let active = true;
@@ -54,6 +93,11 @@ export default function ProductsPage() {
 
                 if (!active) return;
 
+                if (result.totalPages > 0 && currentPage > result.totalPages) {
+                    setCurrentPage(result.totalPages);
+                    return;
+                }
+
                 setProducts(result.data);
                 setTotalProducts(result.total);
                 setPagination({
@@ -61,7 +105,6 @@ export default function ProductsPage() {
                     totalPages: result.totalPages,
                     limit: result.limit,
                 });
-                setCurrentPage(result.page);
             } finally {
                 if (active) {
                     setLoading(false);
