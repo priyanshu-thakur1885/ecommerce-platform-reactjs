@@ -5,6 +5,7 @@ import {
     getCategories,
 } from "../features/products/services/productService";
 import ProductCard from "../features/products/components/ProductCard";
+import ProductCardSkeleton from "../features/products/components/ProductCardSkeleton";
 
 const validSortValues = ["title", "price", "rating"];
 const validOrderValues = ["asc", "desc"];
@@ -192,11 +193,11 @@ export default function ProductsPage() {
                 </div>
             </div>
 
-            {/* Loading Spinner */}
             {loading ? (
-                <div className="flex flex-col items-center justify-center py-24">
-                    <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
-                    <p className="text-gray-500 text-sm">Loading products...</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <ProductCardSkeleton key={index} />
+                    ))}
                 </div>
             ) : (
                 <>
